@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>신규 프로젝트 대시보드</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { font-family: 'Pretendard', sans-serif; background-color: #f8f9fa; }
+        .tab-button { transition: all 0.3s ease; }
+        .tab-button.active { color: #2563eb; border-bottom-color: #2563eb; font-weight: 600; }
+        .kpi-card { transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out; }
+        .kpi-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+        .chart-container { position: relative; width: 100%; max-width: 900px; margin: auto; height: 50vh; max-height: 450px; }
+        .region-button { transition: all 0.2s ease; }
+        .region-button.active { background-color: #2563eb; color: white; }
+        .external-link { transition: color 0.2s; }
+        .external-link:hover { color: #2563eb; }
+        .company-pill {
+            display: inline-flex;
+            align-items: center;
+            background-color: #e0e7ff;
+            color: #3730a3;
+            padding: 4px 8px;
+            border-radius: 9999px;
+            font-size: 14px;
+            font-weight: 500;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+        .company-pill button {
+            margin-left: 6px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #4f46e5;
+        }
+        .company-pill button:hover {
+            color: #312e81;
+        }
+        @media (max-width: 768px) {
+            .chart-container { height: 45vh; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="mb-8">
+            <div class="flex items-center space-x-3 mb-2">
+                <i data-lucide="rocket" class="w-8 h-8 text-blue-600"></i>
+                <h1 class="text-3xl font-bold text-gray-900">신규 프로젝트 대시보드</h1>
+            </div>
+        </header>
+
+        <div id="kpi-section" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8"></div>
+
+        <div class="bg-white rounded-xl shadow-md">
+            <div class="border-b border-gray-200">
+                <nav class="flex space-x-2 p-2" id="tabs">
+                    <button data-tab="new-projects" class="tab-button active flex items-center space-x-2 text-sm sm:text-base py-3 px-4 border-b-2 border-transparent text-gray-600 hover:text-blue-600"><i data-lucide="compass"></i><span>신규 프로젝트</span></button>
+                    <button data-tab="investment-info" class="tab-button flex items-center space-x-2 text-sm sm:text-base py-3 px-4 border-b-2 border-transparent text-gray-600 hover:text-blue-600"><i data-lucide="trending-up"></i><span>기업 투자 정보</span></button>
+                    <button data-tab="tech-trends" class="tab-button flex items-center space-x-2 text-sm sm:text-base py-3 px-4 border-b-2 border-transparent text-gray-600 hover:text-blue-600"><i data-lucide="cpu"></i><span>기술 트렌드</span></button>
+                </nav>
+            </div>
+
+            <main id="tab-content" class="p-4 md:p-6">
+                <section id="new-projects" class="tab-pane">
+                    <div class="mb-6">
+                        <h2 class="text-2xl font-semibold mb-2">신규 프로젝트 현황</h2>
+                        <p class="text-gray-600">채용 공고 데이터를 기반으로 주요 기업들의 신규 프로젝트를 추적하고 개발 단계를 추정합니다.</p>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 gap-8 mb-8">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h3 class="text-lg font-semibold mb-3 text-center">급부상하는 신규 프로젝트 틈새 장르</h3>
+                            <div id="genre-region-filter" class="flex justify-center flex-wrap gap-2 mb-4"></div>
+                            <div class="chart-container"><canvas id="genreGrowthChart"></canvas></div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+                        <div>
+                            <label for="project-developer-filter" class="block mb-1 text-sm font-medium text-gray-700">개발사</label>
+                            <select id="project-developer-filter" class="w-full border-gray-300 rounded-md p-2 text-sm"></select>
+                        </div>
+                        <div>
+                            <label for="project-genre-filter" class="block mb-1 text-sm font-medium text-gray-700">추정 장르</label>
+                            <select id="project-genre-filter" class="w-full border-gray-300 rounded-md p-2 text-sm"></select>
+                        </div>
+                        <div>
+                            <label for="project-status-filter" class="block mb-1 text-sm font-medium text-gray-700">개발 단계</label>
+                            <select id="project-status-filter" class="w-full border-gray-300 rounded-md p-2 text-sm"></select>
+                        </div>
+                        <div>
+                            <label for="company-search-filter" class="block mb-1 text-sm font-medium text-gray-700">프로젝트 검색</label>
+                            <input type="text" id="company-search-filter" placeholder="회사명, 게임명 검색..." class="w-full border-gray-300 rounded-md p-2 text-sm">
+                        </div>
+                    </div>
+                    <div id="new-projects-list" class="space-y-4"></div>
+                </section>
+
+                <section id="investment-info" class="tab-pane hidden">
+                    <div class="mb-6">
+                        <h2 class="text-2xl font-semibold mb-2">기업 투자 정보</h2>
+                        <p class="text-gray-600">경쟁사들의 '신규 IP'와 '기존 IP'에 대한 인력 투자 비중을 비교 분석하고, 관련 투자 동향을 파악합니다.</p>
+                    </div>
+                    <div class="mb-6 bg-gray-50 p-4 rounded-lg">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                             <div>
+                                <label for="company-search-input" class="block text-sm font-medium text-gray-700 mb-1">기업 검색</label>
+                                <input type="text" id="company-search-input" placeholder="검색하여 기업 필터링..." class="w-full border-gray-300 rounded-md p-2 text-sm">
+                            </div>
+                            <div>
+                                <label for="company-selector-dropdown" class="block text-sm font-medium text-gray-700 mb-1">기업 필터</label>
+                                <select id="company-selector-dropdown" class="w-full border-gray-300 rounded-md p-2 text-sm"></select>
+                            </div>
+                        </div>
+                        <div id="selected-companies-pills" class="mt-4 flex flex-wrap"></div>
+                    </div>
+                    <div id="competitor-comparison-container" class="mt-8"></div>
+                </section>
+
+                <section id="tech-trends" class="tab-pane hidden">
+                    <div class="mb-6">
+                        <h2 class="text-2xl font-semibold mb-2">기술 트렌드: 차세대 게임의 기술 DNA 분석</h2>
+                        <p class="text-gray-600">신규 프로젝트 관련 채용 공고를 통해 차세대 게임 시장의 기술 트렌드를 예측하고, AI 기술 도입 현황을 파악합니다.</p>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h3 class="text-lg font-semibold mb-2 text-center">신규 프로젝트 기술 스택</h3>
+                            <div class="chart-container !h-[60vh] !max-h-[550px]"><canvas id="nextGenSkillsChart"></canvas></div>
+                        </div>
+                         <div class="bg-gray-50 p-4 rounded-lg">
+                            <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-4">
+                                <h3 class="text-lg font-semibold text-center sm:text-left shrink-0">AI 관련 뉴스 클리핑</h3>
+                                <div class="w-full grid grid-cols-2 gap-2">
+                                    <select id="ai-news-filter" class="w-full border-gray-300 rounded-md p-2 text-sm"></select>
+                                    <input type="text" id="ai-news-search" placeholder="뉴스 제목 검색..." class="w-full border-gray-300 rounded-md p-2 text-sm">
+                                </div>
+                            </div>
+                            <div id="ai-news-clipping" class="space-y-3 max-h-[480px] overflow-y-auto pr-2"></div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+        <footer class="text-center mt-8 text-sm text-gray-500">
+            <p>&copy; Partnership Business Div. All rights reserved.</p>
+        </footer>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    lucide.createIcons();
+    const dashboardData = {
+        risingNextGenSkills: [
+            { name: 'Generative AI', growth: 620.1 }, { name: 'Machine Learning', growth: 410.7 },
+            { name: 'Unreal Engine 5', growth: 350.2 }, { name: 'Data Engineering', growth: 215.0 },
+            { name: 'Cloud Native', growth: 180.3 },
+        ],
+        nextGenSkills: { 
+            labels: ['Unreal Engine 5', 'Generative AI', 'C++', 'Python (AI/ML)', 'Cloud/AWS/Azure', 'Data Pipeline', 'Machine Learning', 'Procedural Content Gen', 'VFX (Niagara/Houdini)', 'Animation System', 'Rust', 'Live Service Ops'], 
+            data: [95, 92, 88, 85, 82, 78, 75, 72, 68, 65, 61, 58] 
+        },
+        genreGrowthByRegion: {
+            'Global': { labels: ['Extraction Shooter', 'Co-op Roguelike', 'Gacha RPG', 'Open-world Survival', 'Souls-like'], data: [88.2, 79.5, 72.1, 65.9, 55.3] },
+            'North America': { labels: ['Extraction Shooter', 'Open-world Survival', 'Action RPG', 'Roguelike Deckbuilder', 'Tactical Shooter'], data: [95.1, 82.4, 60.3, 58.8, 51.2] },
+            'Asia': { labels: ['Gacha RPG', 'MMORPG', 'Character Collector', 'Action RPG', 'Sub-Culture'], data: [98.5, 85.1, 78.6, 68.3, 62.4] },
+            'Europe': { labels: ['Souls-like', 'Grand Strategy', 'Co-op Roguelike', 'City Builder', '4X Strategy'], data: [85.7, 76.2, 71.9, 68.1, 60.5] }
+        },
+        competitors: {
+            'EA': { 
+                name_ko: '일렉트로닉 아츠', region: 'North America',
+                focus: { existing: 850, new: 210 }, 
+                newGames: [ { title: 'Dragon Age: Dreadwolf', genre: 'RPG', status: 'In Production' }, { title: 'Skate.', genre: 'Sports', status: 'In Production' }, { title: 'Black Panther Project', genre: 'Action-Adventure', status: 'Pre-production' } ],
+                investmentNews: [ { date: '2025-07-15', title: "EA, AI 기반 게임 개발 스튜디오 'Apex Innovations' 인수 발표", link: '#' } ]
+            },
+            'Ubisoft': { 
+                name_ko: '유비소프트', region: 'Europe',
+                focus: { existing: 920, new: 150 }, 
+                newGames: [ { title: "Assassin's Creed Codename Red", genre: 'Action RPG', status: 'In Production' } ],
+                investmentNews: [ { date: '2025-08-02', title: 'Ubisoft, 블록체인 게임 스타트업 Animus와 파트너십 체결', link: '#' } ]
+            },
+            'Tencent': { 
+                name_ko: '텐센트', region: 'Asia',
+                focus: { existing: 650, new: 610 }, 
+                newGames: [ { title: 'Honor of Kings: World', genre: 'Open-world RPG', status: 'Pre-production' } ],
+                investmentNews: [
+                    { date: '2025-08-18', title: 'Tencent, 폴란드 개발사 "Rebel Wolves"에 대규모 전략적 투자 단행', link: '#' },
+                    { date: '2025-06-25', title: '클라우드 게임 부문 강화를 위해 5억 달러 추가 투자 계획 발표', link: '#' }
+                ]
+            },
+            'Take-Two': { 
+                name_ko: '테이크투', region: 'North America',
+                focus: { existing: 780, new: 320 }, 
+                newGames: [ { title: 'Grand Theft Auto VI', genre: 'Open-world Action', status: 'In Production' } ],
+                investmentNews: [ { date: '2025-04-11', title: "Zynga 인수 후 모바일 사업부 신규 프로젝트에 2억 달러 배정", link: '#' } ]
+            },
+            'Nexon': { 
+                name_ko: '넥슨', region: 'Asia',
+                focus: { existing: 950, new: 110 }, 
+                newGames: [ { title: 'The First Descendant', genre: 'Looter Shooter', status: 'Live Service Prep' }, { title: 'Project Overkill', genre: 'Action RPG', status: 'In Production' } ],
+                investmentNews: [ { date: '2025-06-05', title: '넥슨게임즈, 신규 루트슈터 IP 확보 위해 스웨덴 개발 스튜디오 투자', link: '#' } ]
+            },
+            'Krafton': { 
+                name_ko: '크래프톤', region: 'Asia',
+                focus: { existing: 400, new: 380}, 
+                newGames: [ { title: 'Project Black Budget', genre: 'Extraction Shooter', status: 'In Production'}, { title: 'Subnautica 2', genre: 'Open-world Survival', status: 'Pre-production'} ],
+                investmentNews: [ { date: '2025-07-29', title: '크래프톤, 인도 게임 시장 공략 위해 현지 개발사 2곳에 5천만 달러 투자', link: '#' } ]
+            },
+            'NCSoft': { 
+                name_ko: '엔씨소프트', region: 'Asia',
+                focus: { existing: 600, new: 290}, 
+                newGames: [ { title: 'Project LLL', genre: 'MMO Shooter', status: 'In Production'}, { title: 'Throne and Liberty', genre: 'MMORPG', status: 'Live Service Prep'} ],
+                investmentNews: [ { date: '2025-08-21', title: '엔씨소프트, 북미 개발 스튜디오 ArenaNet에 차기작 개발 펀딩 증액', link: '#' } ]
+            },
+            'Pearl Abyss': { 
+                name_ko: '펄어비스', region: 'Asia',
+                focus: { existing: 250, new: 210}, 
+                newGames: [ { title: 'Crimson Desert', genre: 'Open-world Action', status: 'In Production'}, { title: 'DokeV', genre: 'Creature Collector', status: 'Pre-production'} ],
+                investmentNews: [ { date: '2025-03-15', title: '차세대 게임 엔진 "블랙스페이스 엔진" 고도화를 위한 개발 자금 확보', link: '#' } ]
+            },
+        },
+        newProjectDetails: {
+            'Dragon Age: Dreadwolf': [ { level: 'Lead', hires: 2 }, { level: 'Senior', hires: 8 }, { level: 'Junior', hires: 15 } ], 'Skate.': [ { level: 'Lead', hires: 3 }, { level: 'Senior', hires: 5 }, { level: 'Junior', hires: 25 } ], 'Black Panther Project': [ { level: 'Lead', hires: 5 }, { level: 'Senior', hires: 3 }, { level: 'Junior', hires: 2 } ], "Assassin's Creed Codename Red": [ { level: 'Lead', hires: 4 }, { level: 'Senior', hires: 12 }, { level: 'Junior', hires: 35 } ], 'Honor of Kings: World': [ { level: 'Lead', hires: 8 }, { level: 'Senior', hires: 10 }, { level: 'Junior', hires: 5 } ], 'Grand Theft Auto VI': [ { level: 'Lead', hires: 1 }, { level: 'Senior', hires: 15 }, { level: 'Junior', hires: 60 } ], 'The First Descendant': [ { level: 'Lead', hires: 2 }, { level: 'Senior', hires: 8 }, { level: 'Junior', hires: 30 } ], 'Project Overkill': [ { level: 'Lead', hires: 4 }, { level: 'Senior', hires: 10 }, { level: 'Junior', hires: 15 } ], 'Project Black Budget': [ { level: 'Lead', hires: 6 }, { level: 'Senior', hires: 15 }, { level: 'Junior', hires: 20 } ], 'Subnautica 2': [ { level: 'Lead', hires: 4 }, { level: 'Senior', hires: 5 }, { level: 'Junior', hires: 3 } ], 'Project LLL': [ { level: 'Lead', hires: 7 }, { level: 'Senior', hires: 18 }, { level: 'Junior', hires: 25 } ], 'Throne and Liberty': [ { level: 'Lead', hires: 3 }, { level: 'Senior', hires: 10 }, { level: 'Junior', hires: 40 } ], 'Crimson Desert': [ { level: 'Lead', hires: 3 }, { level: 'Senior', hires: 20 }, { level: 'Junior', hires: 50 } ], 'DokeV': [ { level: 'Lead', hires: 5 }, { level: 'Senior', hires: 8 }, { level: 'Junior', hires: 10 } ],
+        },
+        aiNews: [
+            { title: "Ubisoft의 새로운 'NEO NPC' 기술, 게임 내 생성형 AI의 미래를 암시", source: "GamesIndustry.biz", date: "2025-08-28", link: "#", tags: ['Ubisoft'] },
+            { title: "Roblox, 크리에이터를 위한 생성형 AI 솔루션 구축 위해 AI 스타트업 인수", source: "TechCrunch", date: "2025-08-22", link: "#", tags: ['Roblox'] },
+            { title: "NVIDIA, 지능형 NPC를 생생하게 만드는 생성형 AI 기술 'ACE for Games' 시연", source: "NVIDIA News", date: "2025-08-05", link: "#", tags: ['NVIDIA'] },
+            { title: "분석: AAA급 게임 개발에 생성형 AI를 도입하는 실제 비용", source: "Gamasutra", date: "2025-07-30", link: "#", tags: [] },
+            { title: "Tencent AI Lab, 게임 캐릭터 행동을 위한 새로운 강화 학습 모델 특허 출원", source: "Patent Office Gazette", date: "2025-07-21", link: "#", tags: ['Tencent'] },
+            { title: "Krafton, 딥러닝 기반 신규 프로젝트 '프로젝트 미갈루' 발표", source: "Krafton News", date: "2025-07-11", link: "#", tags: ['Krafton'] },
+            { title: "NCSoft AI 연구 부서, 게임 서사를 위한 언어 모델 논문 발표", source: "AI Research Weekly", date: "2025-06-19", link: "#", tags: ['NCSoft'] },
+        ]
+    };
+    
+    let selectedCompanies = [];
+    const charts = {};
+
+    const defaultChartOptions = (additionalOptions = {}) => ({
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { font: { size: 12 } } }, tooltip: { backgroundColor: '#fff', titleColor: '#333', bodyColor: '#666', borderColor: '#ddd', borderWidth: 1, padding: 10, } },
+        scales: { x: { grid: { display: false }, ticks: { font: { size: 10 } } }, y: { grid: { color: '#e5e7eb', borderDash: [2, 4] }, ticks: { font: { size: 10 } } } }, ...additionalOptions
+    });
+
+    const createChart = (id, type, chartData, options) => {
+        if(!document.getElementById(id)) return;
+        if (charts[id]) charts[id].destroy();
+        const ctx = document.getElementById(id).getContext('2d');
+        charts[id] = new Chart(ctx, { type, data: chartData, options });
+    };
+
+    const createKpiCards = () => {
+        const kpiSection = document.getElementById('kpi-section');
+        kpiSection.innerHTML = ''; 
+
+        const projectCounts = Object.entries(dashboardData.competitors)
+            .map(([name, data]) => ({ name, count: data.newGames.length }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5);
+
+        const companyList = projectCounts.map((c, i) => `<li class="flex justify-between items-center text-sm py-1"><span class="text-gray-600 truncate pr-2"><span class="font-semibold text-gray-800 w-6 inline-block">${i + 1}.</span> ${c.name}</span> <span class="font-bold text-blue-600 flex-shrink-0">${c.count}개</span></li>`).join('');
+        kpiSection.innerHTML += `<div class="kpi-card bg-white p-4 rounded-xl shadow-sm border border-gray-100"><div class="flex items-center space-x-2 mb-2"><i data-lucide="building-2" class="w-5 h-5 text-blue-600"></i><h3 class="font-semibold text-gray-800">Top 5 신규 프로젝트 진행사</h3></div><ol class="space-y-1">${companyList}</ol></div>`;
+        
+        const skillList = dashboardData.risingNextGenSkills.map((s, i) => `<li class="flex justify-between items-center text-sm py-1"><span class="text-gray-600 truncate pr-2"><span class="font-semibold text-gray-800 w-6 inline-block">${i + 1}.</span> ${s.name}</span> <span class="font-bold text-green-600 flex-shrink-0">+${s.growth.toFixed(1)}%</span></li>`).join('');
+        kpiSection.innerHTML += `<div class="kpi-card bg-white p-4 rounded-xl shadow-sm border border-gray-100"><div class="flex items-center space-x-2 mb-2"><i data-lucide="sparkles" class="w-5 h-5 text-blue-600"></i><h3 class="font-semibold text-gray-800">차세대 프로젝트 급상승 기술</h3></div><ol class="space-y-1">${skillList}</ol></div>`;
+        lucide.createIcons();
+    };
+    
+    // [MODIFIED] 기업 필터 및 검색 기능이 통합된 로직
+    const setupCompanySelector = () => {
+        const dropdown = document.getElementById('company-selector-dropdown');
+        const pillsContainer = document.getElementById('selected-companies-pills');
+        const searchInput = document.getElementById('company-search-input');
+        if (!dropdown || !pillsContainer || !searchInput) return;
+
+        const populateDropdown = (searchTerm = '') => {
+            const lowerCaseSearchTerm = searchTerm.toLowerCase();
+            
+            const filteredCompanies = Object.entries(dashboardData.competitors).filter(([name, data]) => 
+                name.toLowerCase().includes(lowerCaseSearchTerm) || data.name_ko.toLowerCase().includes(lowerCaseSearchTerm)
+            );
+
+            dropdown.innerHTML = `<option value="">기업을 선택하세요...</option>`;
+            filteredCompanies.forEach(([company, data]) => {
+                if (!selectedCompanies.includes(company)) {
+                    dropdown.innerHTML += `<option value="${company}">${company}</option>`;
+                }
+            });
+        };
+
+        const renderSelectedPills = () => {
+            pillsContainer.innerHTML = '';
+            selectedCompanies.forEach(company => {
+                const pill = document.createElement('div');
+                pill.className = 'company-pill';
+                pill.innerHTML = `<span>${company}</span><button data-company="${company}"><i data-lucide="x" class="w-4 h-4 pointer-events-none"></i></button>`;
+                pillsContainer.appendChild(pill);
+            });
+            lucide.createIcons();
+            populateDropdown(searchInput.value);
+            renderCompetitorComparison();
+        };
+        
+        searchInput.addEventListener('input', () => populateDropdown(searchInput.value));
+
+        dropdown.addEventListener('change', () => {
+            const company = dropdown.value;
+            if (!company) return;
+
+            if (selectedCompanies.length >= 5) {
+                alert('최대 5개까지 선택할 수 있습니다.');
+                dropdown.value = '';
+                return;
+            }
+
+            if (!selectedCompanies.includes(company)) {
+                selectedCompanies.push(company);
+                renderSelectedPills();
+            }
+            dropdown.value = '';
+        });
+
+        pillsContainer.addEventListener('click', (e) => {
+            const button = e.target.closest('button');
+            if (button) {
+                const company = button.dataset.company;
+                selectedCompanies = selectedCompanies.filter(c => c !== company);
+                renderSelectedPills();
+            }
+        });
+
+        populateDropdown();
+    };
+
+    const renderCompetitorComparison = () => {
+        const container = document.getElementById('competitor-comparison-container');
+        if(!container) return;
+
+        if (selectedCompanies.length === 0) {
+            container.innerHTML = `<div class="text-center text-gray-500 p-8"><i data-lucide="info" class="mx-auto h-12 w-12 text-gray-400"></i><p class="mt-4">비교할 경쟁사를 선택해주세요.</p></div>`;
+            lucide.createIcons();
+            return;
+        }
+
+        container.innerHTML = `<div id="investment-news-container" class="mb-8"></div><div class="grid grid-cols-1 gap-8"><div class="bg-gray-50 p-4 rounded-lg"><h3 class="text-lg font-semibold mb-2 text-center">기업별 신규/기존 IP 투자 비중 (채용공고 기준)</h3><div class="chart-container"><canvas id="investmentProjectFocusChart"></canvas></div></div></div>`;
+        
+        const newsContainer = document.getElementById('investment-news-container');
+        let newsHtml = '';
+        selectedCompanies.forEach(company => {
+            const companyData = dashboardData.competitors[company];
+            if (companyData.investmentNews && companyData.investmentNews.length > 0) {
+                newsHtml += `<div class="mb-6"><h3 class="text-lg font-semibold mb-3 text-gray-800">${company} 관련 주요 투자 동향</h3><div class="space-y-3">`;
+                companyData.investmentNews.forEach(news => {
+                    newsHtml += `<a href="${news.link}" target="_blank" class="block bg-white p-3 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow group"><p class="font-semibold text-gray-700 group-hover:text-blue-600">${news.title}</p><p class="text-xs text-gray-500 mt-1">${news.date}</p></a>`;
+                });
+                newsHtml += `</div></div>`;
+            }
+        });
+        newsContainer.innerHTML = newsHtml;
+        
+        createChart('investmentProjectFocusChart', 'bar', {
+            labels: selectedCompanies,
+            datasets: [ { label: '기존 IP', data: selectedCompanies.map(c => { const t = dashboardData.competitors[c].focus; return t.existing + t.new > 0 ? (t.existing / (t.existing + t.new) * 100) : 0; }), backgroundColor: '#64748b' }, { label: '신규 IP', data: selectedCompanies.map(c => { const t = dashboardData.competitors[c].focus; return t.existing + t.new > 0 ? (t.new / (t.existing + t.new) * 100) : 0; }), backgroundColor: '#f59e0b' } ]
+        }, defaultChartOptions({ indexAxis: 'y', scales: { x: { stacked: true, max: 100, ticks: { callback: v => v + '%' } }, y: { stacked: true, grid: { display: false } } } }));
+    };
+
+    const calculateProjectPhaseIndex = (game) => {
+        const postings = dashboardData.newProjectDetails[game.title];
+        if (!postings) return { index: 'N/A', interpretation: '데이터 부족' };
+        const weights = { 'Lead': 5, 'Senior': 3, 'Junior': 1 };
+        let weightedSum = 0; let totalHires = 0;
+        postings.forEach(p => { weightedSum += (weights[p.level] || 0) * p.hires; totalHires += p.hires; });
+        if (totalHires === 0) return { index: '0.00', interpretation: '데이터 부족' };
+        const index = weightedSum / totalHires;
+        let interpretation = '본격 제작';
+        if (index >= 4.0) interpretation = '사전 제작';
+        else if (index <= 2.0) interpretation = '프로덕션 고도화';
+        return { index: index.toFixed(2), interpretation };
+    };
+
+    const setupNewProjectTab = () => {
+        const devSelect = document.getElementById('project-developer-filter');
+        const genreSelect = document.getElementById('project-genre-filter');
+        const statusSelect = document.getElementById('project-status-filter');
+        const searchInput = document.getElementById('company-search-filter');
+        const listContainer = document.getElementById('new-projects-list');
+        const allProjects = Object.entries(dashboardData.competitors).flatMap(([company, data]) => data.newGames.map(game => ({ ...game, company })));
+        const populateSelect = (select, values, allLabel = '전체') => { select.innerHTML = `<option value="">${allLabel}</option>` + [...new Set(values)].map(v => `<option value="${v}">${v}</option>`).join(''); };
+        populateSelect(devSelect, allProjects.map(p => p.company));
+        populateSelect(genreSelect, allProjects.map(p => p.genre), '모든 장르');
+        populateSelect(statusSelect, ['사전 제작', '본격 제작', '프로덕션 고도화', 'Live Service Prep'], '모든 단계');
+        const renderList = () => {
+            const devVal = devSelect.value; const genreVal = genreSelect.value; const statusVal = statusSelect.value; const searchTerm = searchInput.value.toLowerCase();
+            const filtered = allProjects.filter(p => {
+                const phaseInfo = calculateProjectPhaseIndex(p); const currentStatus = p.status === 'Live Service Prep' ? 'Live Service Prep' : phaseInfo.interpretation;
+                return (!devVal || p.company === devVal) && (!genreVal || p.genre === genreVal) && (!statusVal || currentStatus === statusVal) && (!searchTerm || p.company.toLowerCase().includes(searchTerm) || p.title.toLowerCase().includes(searchTerm));
+            });
+            if (filtered.length === 0) { listContainer.innerHTML = '<p class="text-center text-gray-500 py-8">조건에 맞는 프로젝트가 없습니다.</p>'; return; }
+            listContainer.innerHTML = filtered.map(game => {
+                const phaseInfo = calculateProjectPhaseIndex(game); const currentStatus = game.status === 'Live Service Prep' ? 'Live Service Prep' : phaseInfo.interpretation;
+                const interpretationColor = currentStatus === '사전 제작' ? 'bg-purple-100 text-purple-800' : currentStatus === '본격 제작' ? 'bg-yellow-100 text-yellow-800' : currentStatus === 'Live Service Prep' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800';
+                const searchTitle = encodeURIComponent(`${game.company} ${game.title}`);
+                return `<div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200"><div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2"><div><p class="font-semibold text-gray-900 text-lg">${game.company}: ${game.title}</p><p class="text-sm text-gray-500">${game.genre}</p></div><div class="flex items-center gap-4"><div class="text-right"><p class="text-sm font-semibold text-gray-700">개발 단계 지수: <span class="text-blue-600 font-bold">${phaseInfo.index}</span></p><span class="text-xs font-medium px-2 py-0.5 rounded-full ${interpretationColor}">${currentStatus}</span></div></div></div><div class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-end space-x-4"><a href="https://www.google.com/search?q=${searchTitle}+채용" target="_blank" class="external-link text-gray-500 flex items-center space-x-1"><i data-lucide="briefcase" class="w-4 h-4"></i><span class="text-sm">채용</span></a><a href="https://www.youtube.com/results?search_query=${searchTitle}" target="_blank" class="external-link text-gray-500 flex items-center space-x-1"><i data-lucide="youtube" class="w-4 h-4"></i><span class="text-sm">유튜브</span></a><a href="https://www.google.com/search?q=${searchTitle}&tbm=nws" target="_blank" class="external-link text-gray-500 flex items-center space-x-1"><i data-lucide="newspaper" class="w-4 h-4"></i><span class="text-sm">뉴스</span></a></div></div>`;
+            }).join('');
+            lucide.createIcons();
+        };
+        [devSelect, genreSelect, statusSelect].forEach(el => el.addEventListener('change', renderList));
+        searchInput.addEventListener('input', renderList);
+        renderList();
+    };
+
+    const setupGenreChart = () => {
+        const filterContainer = document.getElementById('genre-region-filter');
+        const regions = Object.keys(dashboardData.genreGrowthByRegion);
+        filterContainer.innerHTML = regions.map((region, index) => `<button class="region-button text-sm font-medium py-1 px-3 rounded-full border ${index === 0 ? 'active' : ''}" data-region="${region}">${region}</button>`).join('');
+        const renderGenreChart = (region) => {
+            const chartData = dashboardData.genreGrowthByRegion[region];
+            createChart('genreGrowthChart', 'bar', { labels: chartData.labels, datasets: [{ label: '채용 공고 증가율 (%)', data: chartData.data, backgroundColor: '#f97316', borderRadius: 4 }] }, defaultChartOptions({ indexAxis: 'y', scales: { x: { ticks: { callback: v => v + '%' } }, y: { grid: { display: false } } }, plugins: { legend: { display: false } } }));
+            filterContainer.querySelectorAll('.region-button').forEach(btn => { btn.classList.toggle('active', btn.dataset.region === region); });
+        };
+        filterContainer.addEventListener('click', (e) => { if (e.target.tagName === 'BUTTON') { renderGenreChart(e.target.dataset.region); } });
+        renderGenreChart(regions[0]); 
+    };
+
+    const setupAiNews = () => {
+        const container = document.getElementById('ai-news-clipping');
+        const filter = document.getElementById('ai-news-filter');
+        const searchInput = document.getElementById('ai-news-search');
+        if (!container || !filter || !searchInput) return;
+
+        const allTags = [...new Set(dashboardData.aiNews.flatMap(news => news.tags))];
+        filter.innerHTML = `<option value="">전체 기업</option>` + allTags.sort().map(tag => `<option value="${tag}">${tag}</option>`).join('');
+
+        const renderNews = () => {
+            const selectedCompany = filter.value;
+            const searchTerm = searchInput.value.toLowerCase();
+            let filteredNews = dashboardData.aiNews;
+            if (selectedCompany) { filteredNews = filteredNews.filter(news => news.tags.includes(selectedCompany)); }
+            if (searchTerm) { filteredNews = filteredNews.filter(news => news.title.toLowerCase().includes(searchTerm)); }
+            if (filteredNews.length === 0) { container.innerHTML = '<p class="text-center text-gray-500 py-8">관련 뉴스가 없습니다.</p>'; return; }
+            container.innerHTML = filteredNews.map(news => `<div class="bg-white p-3 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow"><a href="${news.link}" target="_blank" class="group"><h4 class="font-semibold text-gray-800 group-hover:text-blue-600">${news.title}</h4><div class="flex justify-between items-center mt-2 text-xs text-gray-500"><span class="font-medium">${news.source}</span><span>${news.date}</span></div></a></div>`).join('');
+        }
+
+        filter.addEventListener('change', renderNews);
+        searchInput.addEventListener('input', renderNews);
+        renderNews();
+    };
+
+    const initializeCharts = () => {
+        createChart('nextGenSkillsChart', 'bar', {
+            labels: dashboardData.nextGenSkills.labels, datasets: [{ label: '언급 빈도 (%)', data: dashboardData.nextGenSkills.data, backgroundColor: '#2563eb', borderRadius: 4 }]
+        }, defaultChartOptions({ indexAxis: 'y', scales: { x: { ticks: { callback: (v) => v + '%' } }, y: { grid: { display: false } } }, plugins: { legend: { display: false } } }));
+    };
+
+    const setupTabs = () => {
+        const tabs = document.getElementById('tabs');
+        const panes = document.querySelectorAll('.tab-pane');
+        tabs.addEventListener('click', (e) => {
+            const button = e.target.closest('.tab-button');
+            if (!button) return;
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            panes.forEach(pane => { pane.classList.toggle('hidden', pane.id !== button.dataset.tab); });
+        });
+    };
+
+    // --- 대시보드 초기 실행 ---
+    createKpiCards();
+    setupTabs();
+    initializeCharts();
+    setupCompanySelector();
+    renderCompetitorComparison();
+    setupNewProjectTab();
+    setupGenreChart();
+    setupAiNews();
+});
+</script>
+</body>
+</html>
